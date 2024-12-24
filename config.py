@@ -1,10 +1,10 @@
 
 HOST = '0.0.0.0'
-PORT = 19420
-TOKEN = 'LovHuTao'
-ENT = 'LovLovLovHuTao'
+PORT = 11120
+TOKEN = 'EntranceToken'
+ENT = 'Entrance'
 
-LOG_LEVEL = 'debug'
+LOG_LEVEL = 'info'
 VER = '0.1.0'
 VER_CODE = '1'
 
