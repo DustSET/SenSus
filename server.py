@@ -12,7 +12,8 @@ import importlib
 from plugins import PluginManager
 import logging
 
-import config
+from config import config
+from conf import ConfigLoader
 
 # 获取模块级别的 logger
 logger = logging.getLogger(__name__)
@@ -26,6 +27,9 @@ class WebSocketServer:
         os.makedirs("cache", exist_ok=True)
         os.makedirs("logs", exist_ok=True)
         os.makedirs("plugins", exist_ok=True)
+        os.makedirs("config", exist_ok=True)
+
+        self.Config = ConfigLoader('config')
 
         self.host = config.HOST
         self.port = config.PORT

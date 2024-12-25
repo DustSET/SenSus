@@ -27,7 +27,7 @@ class StrMsgPlugin(Plugin):
 
         # 初始化服务
         logger.info("[ StrMsg ] 实例化服务模块...")
-        self.services = Services(self.routes.app)
+        self.services = Services(self.routes.app, self.server)
 
         logger.info("[ StrMsg ] 初始化完毕\n")
 

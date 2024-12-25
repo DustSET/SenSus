@@ -6,7 +6,7 @@ import json
 from datetime import datetime, timedelta
 import schedule
 import logging
-from .. import config
+from config.StrMsg import config
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,8 @@ def datetime_converter(o):
         return o.isoformat()
 
 class DBservice:
-    def __init__(self, app):
+    def __init__(self, app, server):
+        self.server = server
         self.app = app
         self.schDay = config.SCHDAY
         logger.info("[ StrMsg / Services / DBservice ] 初始化消息数据库...")

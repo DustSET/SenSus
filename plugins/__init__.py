@@ -362,6 +362,18 @@ class PluginManager:
             else:
                 logger.error(f"[ 插件管理事件 ] 插件 {plugin_name} 未加载，暂无相关操作")
 
+    """  
+
+    EntranceToken
+
+    pluginManager
+
+    reload
+
+    SystemMonitor
+
+    """
+
     def check_plugin_type(self, plugin_name):
         """判断插件类型（文件夹插件还是单文件插件）"""
         

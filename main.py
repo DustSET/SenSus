@@ -6,7 +6,7 @@ import asyncio
 import traceback
 from log import setup_logging, logger
 from server import WebSocketServer
-import config
+from config import config
 
 def main():
     # 获取项目根目录的绝对路径

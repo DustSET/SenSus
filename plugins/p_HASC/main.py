@@ -1,4 +1,7 @@
 import requests
+import threading
+import signal
+import sys
 import time
 import json
 import logging
@@ -74,20 +77,39 @@ class i18n:
 class HASCPlugin(Plugin):
     def __init__(self, server):
         self.server = server
+        self._stop_event = threading.Event()  # 用于停止后台线程
+        # 设置信号处理器
+        logger.debug("[ HASC ] 设置信号处理器...")
+        signal.signal(signal.SIGINT, self.handle_sigint)
+
+        self.config = None
+        self.ha_url = None
+        self.api_token = None
+
 
         self.i18n = i18n()  # 初始化语言类
+        try:
+            self.config = self.server.Config.conf['HASC']
 
-        # 配置Home Assistant的信息
-        ha_url = "Your_ha_url"  # Home Assistant实例URL
-        api_token = "Your_token"  # 从Home Assistant获取的长期访问令牌
+            # 配置Home Assistant的信息
+            self.ha_url = self.config['py']['config'].get('ha_url')
+            self.api_token = self.config['py']['config'].get('api_token')
 
-        self.ha_url = ha_url
-        self.api_token = api_token
+            
+            logger.debug(f"[ HASC ] \n从配置文件获取到的 ha_url ：\n{self.ha_url}\n从配置文件获取到的 api_token ：\n{self.api_token}")
+
+        except Exception as e:
+            logger.error(f"[ HASC ] 加载配置文件出错: \n{e}")
+
+
         self.headers = {
             'Authorization': f'Bearer {self.api_token}',
             'Content-Type': 'application/json'
         }
         self.stats_data = []  # 初始化为空列表
+        
+        self.devices_by_type = {}
+        self.states = {}
 
         # 加载已有的 home_assistant_stats.json（如果存在的话）
         try:
@@ -97,56 +119,66 @@ class HASCPlugin(Plugin):
             logger.warning("\033[34m[HASC]\033[0m home_assistant_stats.json 配置文件不存在。")
             pass # 文件不存在，但是 self.stats_data 初始化为空列表了喵
             
-        asyncio.create_task(self.get_states_init())
+        self._init()
         
         logger.info("[ SystemMonitor ] 初始化完毕\n")
+
+    # 自定义 Ctrl+C 处理函数
+    def handle_sigint(self, signal, frame):
+        sys.exit(0)
 
     async def on_message(self, websocket, message):
         # 可以根据消息执行相应的操作
         # logger.debug(f"\033[34m[HASC]\033[0m 收到消息：\n{message}")
         if message.get('method') == "get_status":
-            response = {"message": self.get_states()}
+            response = {"message": self.states}
             await websocket.send(json.dumps(response, ensure_ascii=False))
 
         pass
 
-    async def get_states_init(self):
-        await asyncio.sleep(3)
+    def _init(self):
+        # 启动一个后台线程，定期获取系统信息
+        self.monitor_thread = threading.Thread(target=self.start_get_states, daemon=True)
+        self.monitor_thread.start()
+
+
+    def start_get_states(self):
+        time.sleep(3)
         # 获取设备状态（例如，每10秒获取一次）
         while True:
+            
+            logger.info(f"\033[34m[HASC]\033[0m 插件每10秒获取您家庭的所有设备状态，设备数越多时间越长")
             states = self.get_states()
-            logger.info(f"\033[34m[HASC]\033[0m 当前所有智能设备状态: {json.dumps(states, indent=2)}")
+            # logger.debug(f"\033[34m[HASC]\033[0m 当前所有智能设备状态: {json.dumps(states, indent=2)}")
             
             # 解析设备信息并提取用户名称、设备类型及设备列表
-            devices_by_type = {}
 
             for device in states:
                 friendly_name = device['attributes'].get('friendly_name', '未知设备')
                 entity_id = device['entity_id']
                 device_type = entity_id.split('.')[0]  # 获取设备类型（如：light, sensor, button）
                 
-                if device_type not in devices_by_type:
-                    devices_by_type[device_type] = []
+                if device_type not in self.devices_by_type:
+                    self.devices_by_type[device_type] = []
                 
-                devices_by_type[device_type].append(friendly_name)
+                self.devices_by_type[device_type].append(friendly_name)
             
             # 输出设备类型及其包含的设备
-            logger.info("\033[34m[HASC]\033[0m 设备列表：")
-            for device_type, devices in devices_by_type.items():
-                logger.info(f"\033[34m[HASC]\033[0m {device_type}: {', '.join(devices)}")
+            logger.debug("\033[34m[HASC]\033[0m 设备列表：\n")
+            for device_type, devices in self.devices_by_type.items():
+                logger.debug(f"\033[34m[HASC]\033[0m {device_type}: {', '.join(devices)}")
             
             time.sleep(10)
 
     def get_states(self):
         """获取Home Assistant的所有状态"""
-        logger.info(f"\033[34m[HASC]\033[0m 插件每10秒获取您家庭的所有设备状态，设备数越多时间越长")
         url = f'{self.ha_url}/api/states'
         try:
             response = requests.get(url, headers=self.headers)
             response.raise_for_status()  # 如果响应状态码不是200，会抛出异常
-            states = response.json()
-            self.save_states_to_file(states)  # 保存状态到文件
-            return states
+            self.states = response.json()
+            self.save_states_to_file(self.states)  # 保存状态到文件
+            return self.states
         except requests.exceptions.RequestException as e:
             logger.warning(f"\033[34m[HASC]\033[0m 获取家庭状态失败，错误: {e}")
             return []

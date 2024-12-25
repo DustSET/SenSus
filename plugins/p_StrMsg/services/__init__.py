@@ -7,11 +7,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 class Services:
-    def __init__(self, app):
+    def __init__(self, app, server):
+        self.server = server
         self.app = app
         # 初始化数据库
         logger.info("[ StrMsg / Services ] 实例化消息数据库模块...")
-        self.DBservice = DBservice(self.app)
+        self.DBservice = DBservice(self.app, self.server)
         logger.info("[ StrMsg / Services ] 初始化完毕")
 
     def process_webhook_message(self, source, data):

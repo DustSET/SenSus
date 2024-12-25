@@ -1,7 +1,10 @@
 logs/
 cache/
+/config/*
+!/config/config.py
 test/
 __pycache__/
+p_test/
 u_*
 *.py[cod]
 *.zip

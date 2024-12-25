@@ -10,7 +10,7 @@ import asyncio
 import uvicorn
 from .webhook_routes import webhook_bp
 from ..services.data_service import DBservice
-from .. import config
+from config.StrMsg import config
 
 import logging
 
