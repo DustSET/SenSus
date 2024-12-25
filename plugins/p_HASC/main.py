@@ -75,7 +75,7 @@ class HASCPlugin(Plugin):
     def __init__(self, server):
         self.server = server
 
-        self.i18n = i18n()
+        self.i18n = i18n()  # 初始化语言类
 
         # 配置Home Assistant的信息
         ha_url = "Your_ha_url"  # Home Assistant实例URL
