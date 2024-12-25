@@ -4,7 +4,7 @@ PORT = 11120
 TOKEN = 'EntranceToken'
 ENT = 'Entrance'
 
-LOG_LEVEL = 'info'
+LOG_LEVEL = 'debug'
 VER = '0.1.0'
 VER_CODE = '1'
 

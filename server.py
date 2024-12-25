@@ -54,6 +54,7 @@ class WebSocketServer:
         logger.info("[ ws服务器 ] 子协议 (Token) 验证成功")
         logger.debug(f"[ ws服务器 ] 接收到的 Token 为：{token}")
 
+        return True
 
     async def process_message(self, websocket, message):
         """
@@ -99,8 +100,7 @@ class WebSocketServer:
             if protocol_string:
                 protocol_list = [item.strip() for item in protocol_string.split(',')]
                 token = protocol_list[0]  # token 在协议字段的第一部分
-                # 第二次验证 token （我也不知道为什么要多写一遍验证，也许是闲的
-                await self.validate_token(token)
+                if await self.validate_token(token): pass
 
                 try:
                     async for message in websocket:

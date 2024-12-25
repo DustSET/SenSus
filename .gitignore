@@ -1,2 +1,6 @@
+logs/
+cache/
+test/
 __pycache__/
 *.py[cod]
+*.zip
