@@ -16,7 +16,7 @@ current_language = "zh_cn"
 
 class i18n:
     def __init__(self):
-        logger.debug("\033[34m[HASC]\033[0m 初始化 i18n 相关...")
+        logger.debug("\033[34m[ HASC ]\033[0m 初始化 i18n 相关...")
         # 确保创建i18n文件夹及默认语言文件
         self.ensure_i18n_folder_and_default_language()
         # 载入当前语言
@@ -29,7 +29,7 @@ class i18n:
         # 检查i18n文件夹是否存在，不存在则创建
         if not os.path.exists(i18n_folder):
             os.makedirs(i18n_folder)
-            logger.info(f"\033[34m[HASC]\033[0m i18n文件夹不存在，已创建: {i18n_folder}")
+            logger.info(f"\033[34m[ HASC ]\033[0m i18n文件夹不存在，已创建: {i18n_folder}")
             
         # 检查zh_cn.json文件是否存在，不存在则创建
         zh_cn_file = os.path.join(i18n_folder, 'zh_cn.json')
@@ -55,7 +55,7 @@ class i18n:
             }
             with open(zh_cn_file, 'w', encoding='utf-8') as f:
                 json.dump(default_zh_cn, f, ensure_ascii=False, indent=4)
-            logger.info(f"\033[34m[HASC]\033[0m 默认语言文件 zh_cn.json 已创建: {zh_cn_file}")
+            logger.info(f"\033[34m[ HASC ]\033[0m 默认语言文件 zh_cn.json 已创建: {zh_cn_file}")
 
     # 加载语言文件
     def load_language(self, language_code):
@@ -116,20 +116,24 @@ class HASCPlugin(Plugin):
             with open('./cache/home_assistant_stats.json', 'r', encoding='utf-8') as f:
                 self.stats_data = json.load(f)
         except FileNotFoundError:
-            logger.warning("\033[34m[HASC]\033[0m home_assistant_stats.json 配置文件不存在。")
+            logger.warning("\033[34m[ HASC ]\033[0m home_assistant_stats.json 配置文件不存在。")
             pass # 文件不存在，但是 self.stats_data 初始化为空列表了喵
             
         self._init()
         
-        logger.info("[ SystemMonitor ] 初始化完毕\n")
+        logger.info("[ HASC ] 初始化完毕\n")
 
     # 自定义 Ctrl+C 处理函数
     def handle_sigint(self, signal, frame):
         sys.exit(0)
+    
+    async def stop(self):
+        logger.info("[ HASC ] 正在销毁自身实例...\n")
+        del self
 
     async def on_message(self, websocket, message):
         # 可以根据消息执行相应的操作
-        # logger.debug(f"\033[34m[HASC]\033[0m 收到消息：\n{message}")
+        # logger.debug(f"\033[34m[ HASC ]\033[0m 收到消息：\n{message}")
         if message.get('method') == "get_status":
             response = {"message": self.states}
             await websocket.send(json.dumps(response, ensure_ascii=False))
@@ -147,9 +151,9 @@ class HASCPlugin(Plugin):
         # 获取设备状态（例如，每10秒获取一次）
         while True:
             
-            logger.info(f"\033[34m[HASC]\033[0m 插件每10秒获取您家庭的所有设备状态，设备数越多时间越长")
+            logger.info(f"\033[34m[ HASC ]\033[0m 插件每10秒获取您家庭的所有设备状态，设备数越多时间越长")
             states = self.get_states()
-            # logger.debug(f"\033[34m[HASC]\033[0m 当前所有智能设备状态: {json.dumps(states, indent=2)}")
+            # logger.debug(f"\033[34m[ HASC ]\033[0m 当前所有智能设备状态: {json.dumps(states, indent=2)}")
             
             # 解析设备信息并提取用户名称、设备类型及设备列表
 
@@ -164,9 +168,9 @@ class HASCPlugin(Plugin):
                 self.devices_by_type[device_type].append(friendly_name)
             
             # 输出设备类型及其包含的设备
-            logger.debug("\033[34m[HASC]\033[0m 设备列表：\n")
+            logger.debug("\033[34m[ HASC ]\033[0m 设备列表：\n")
             for device_type, devices in self.devices_by_type.items():
-                logger.debug(f"\033[34m[HASC]\033[0m {device_type}: {', '.join(devices)}")
+                logger.debug(f"\033[34m[ HASC ]\033[0m {device_type}: {', '.join(devices)}")
             
             time.sleep(10)
 
@@ -180,7 +184,7 @@ class HASCPlugin(Plugin):
             self.save_states_to_file(self.states)  # 保存状态到文件
             return self.states
         except requests.exceptions.RequestException as e:
-            logger.warning(f"\033[34m[HASC]\033[0m 获取家庭状态失败，错误: {e}")
+            logger.warning(f"\033[34m[ HASC ]\033[0m 获取家庭状态失败，错误: {e}")
             return []
 
     def save_states_to_file(self, states):
@@ -189,9 +193,9 @@ class HASCPlugin(Plugin):
             os.makedirs('./cache', exist_ok=True)  # 确保cache目录存在
             with open('./cache/home_assistant_stats.json', 'w', encoding='utf-8') as f:
                 json.dump(states, f, ensure_ascii=False, indent=4)
-            logger.info(f"\033[34m[HASC]\033[0m 家庭设备状态已保存至 ./cache/home_assistant_stats.json")
+            logger.info(f"\033[34m[ HASC ]\033[0m 家庭设备状态已保存至 ./cache/home_assistant_stats.json")
         except Exception as e:
-            logger.warning(f"\033[34m[HASC]\033[0m 保存状态到文件失败: {e}")
+            logger.warning(f"\033[34m[ HASC ]\033[0m 保存状态到文件失败: {e}")
 
     def listen_to_events(self, event_type="state_changed"):
         """监听事件，并响应特定的状态变化"""
@@ -205,26 +209,26 @@ class HASCPlugin(Plugin):
                         event = json.loads(line.decode('utf-8'))
                         self.process_event(event)
             except requests.exceptions.RequestException as e:
-                logger.warning(f"\033[34m[HASC]\033[0m 监听失败，错误: {e}")
+                logger.warning(f"\033[34m[ HASC ]\033[0m 监听失败，错误: {e}")
                 time.sleep(5)  # 失败后等待5秒再重试
             time.sleep(1)
 
     def process_event(self, event):
         """处理状态变化事件"""
-        logger.info(f"\033[34m[HASC]\033[0m 指令已发送: {json.dumps(event, indent=2)}")
+        logger.info(f"\033[34m[ HASC ]\033[0m 指令已发送: {json.dumps(event, indent=2)}")
         entity_id = event.get('data', {}).get('entity_id')
         new_state = event.get('data', {}).get('new_state', {}).get('state')
 
         if entity_id and new_state:
-            logger.info(f"\033[34m[HASC]\033[0m 已将设备 {entity_id} 更改至 {new_state} 状态")
+            logger.info(f"\033[34m[ HASC ]\033[0m 已将设备 {entity_id} 更改至 {new_state} 状态")
             # 执行基于状态变化的动作
             if entity_id == 'light.living_room' and new_state == 'on':
-                logger.info("\033[34m[HASC]\033[0m light_on")
+                logger.info("\033[34m[ HASC ]\033[0m light_on")
                 self.perform_action(entity_id)
 
     def perform_action(self, entity_id):
         """根据设备状态执行动作"""
-        print(f"\033[34m[HASC]\033[0m 正在执行 {entity_id} 设备操作，请稍后...")
+        print(f"\033[34m[ HASC ]\033[0m 正在执行 {entity_id} 设备操作，请稍后...")
         # 根据实际需求调用Home Assistant API执行动作
         url = f'{self.ha_url}/api/services/light/turn_off'
         payload = {
@@ -233,7 +237,7 @@ class HASCPlugin(Plugin):
         try:
             response = requests.post(url, headers=self.headers, json=payload)
             response.raise_for_status()  # 如果响应状态码不是200，会抛出异常
-            logger.info("\033[34m[HASC]\033[0m action_performed")
+            logger.info("\033[34m[ HASC ]\033[0m action_performed")
         except requests.exceptions.RequestException as e:
-            logger.warning(f"\033[34m[HASC]\033[0m 执行动作失败: {e}")
-            logger.info("\033[34m[HASC]\033[0m action_failed")
+            logger.warning(f"\033[34m[ HASC ]\033[0m 执行动作失败: {e}")
+            logger.info("\033[34m[ HASC ]\033[0m action_failed")

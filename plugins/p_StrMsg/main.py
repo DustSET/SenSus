@@ -37,6 +37,10 @@ class StrMsgPlugin(Plugin):
         logger.debug("[ StrMsg ] 正在关闭 通知聚合 进程...")
         sys.exit(0)  # 优雅退出
 
+    async def stop(self):
+        logger.info("[ SystemMonitor ] 正在销毁自身实例...\n")
+        del self
+
     async def on_message(self, websocket, message):
         # logger.debug(f"[ StrMsg ] 收到消息：\n{message}")
         

@@ -50,7 +50,7 @@ class ConfigLoader:
                 if not callable(attribute) and not attribute_name.startswith('__'):
                     config_data[attribute_name] = attribute
         
-            logger.debug(f"[ conf < {filepath} ] 加载到的 py 配置文件: \n{config_data} \n")
+            # logger.debug(f"[ conf < {filepath} ] 加载到的 py 配置文件: \n{config_data} \n")
         except Exception as e:
             logger.error(f"[ conf ] 加载文件 {filepath} 失败: \n{e}")
         return config_data
@@ -85,9 +85,9 @@ class ConfigLoader:
             if '__pycache__' in dirs:
                 dirs.remove('__pycache__')
 
-            logger.debug(f"正在遍历目录: {root}")
-            logger.debug(f"当前目录下的子目录: {dirs}")
-            logger.debug(f"当前目录下的文件: {files}")
+            # logger.debug(f"正在遍历目录: {root}")
+            # logger.debug(f"当前目录下的子目录: {dirs}")
+            # logger.debug(f"当前目录下的文件: {files}")
 
             # 跳过 __pycache__ 目录中的 .pyc 文件
             files = [file for file in files if not file.endswith('.pyc')]  # 过滤掉 .pyc 文件
