@@ -2,12 +2,76 @@ import requests
 import time
 import json
 import logging
-from datetime import datetime
+import os
 
 logger = logging.getLogger(__name__)
 
-current_datetime = datetime.now()
-formatted_datetime = current_datetime.srftime('%Y-%m-%d %H:%M:%S')
+# 默认语言设置为中文（zh_cn.json）
+current_language = "zh_cn"
+
+# 创建i18n文件夹和默认的zh_cn.json文件
+def ensure_i18n_folder_and_default_language():
+    i18n_folder = os.path.join(os.path.dirname(__file__), 'i18n')
+    # 检查i18n文件夹是否存在，不存在则创建
+    if not os.path.exists(i18n_folder):
+        os.makedirs(i18n_folder)
+        logger.info(f"\033[34m[HASC]\033[0m i18n文件夹不存在，已创建: {i18n_folder}")
+        
+    # 检查zh_cn.json文件是否存在，不存在则创建
+    zh_cn_file = os.path.join(i18n_folder, 'zh_cn.json')
+    if not os.path.exists(zh_cn_file):
+        default_zh_cn = {
+            "person": "主人名",
+            "zone": "家庭名称",
+            "conversation": "插件连接家庭方式",
+            "sun": "当前家庭所处时间",
+            "sensor": "家庭内已有设备",
+            "tts": "默认调用语音助手",
+            "button": "按钮",
+            "climate": "气候",
+            "event": "已发生事件",
+            "humidifier": "加湿设备",
+            "select": "自定义功能",
+            "light": "灯光设备",
+            "light_on": "灯已打开",
+            "action_performed": "动作已执行",
+            "action_failed": "动作执行失败",
+            "device_status": "设备状态",
+            "device_type": "设备类型"
+        }
+        with open(zh_cn_file, 'w', encoding='utf-8') as f:
+            json.dump(default_zh_cn, f, ensure_ascii=False, indent=4)
+        logger.info(f"\033[34m[HASC]\033[0m 默认语言文件 zh_cn.json 已创建: {zh_cn_file}")
+
+# 加载语言文件
+def load_language(language_code):
+    language_file = os.path.join(os.path.dirname(__file__), 'i18n', f"{language_code}.json")
+    if os.path.exists(language_file):
+        with open(language_file, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    else:
+        logger.warning(f"语言文件 {language_code} 未找到. 默认使用简体中文.")
+        # 默认加载英文语言文件
+        language_file = os.path.join(os.path.dirname(__file__), 'i18n', "zh_cn.json")
+        with open(language_file, 'r', encoding='utf-8') as f:
+            return json.load(f)
+
+# 确保创建i18n文件夹及默认语言文件
+ensure_i18n_folder_and_default_language()
+
+# 载入当前语言
+translations = load_language(current_language)
+
+# 获取翻译文本的函数
+def _(key):
+    return translations.get(key, key)  # 如果找不到翻译，返回键值本身
+
+# 加载已有的 home_assistant_stats.json（如果存在的话）
+try:
+    with open('./cache/home_assistant_stats.json', 'r', encoding='utf-8') as f:
+        data = json.load(f)
+except FileNotFoundError:
+    data = []  # 如果文件不存在，则初始化为空列表
 
 class HomeAssistantListener:
     def __init__(self, ha_url, api_token):
@@ -20,57 +84,72 @@ class HomeAssistantListener:
 
     def get_states(self):
         """获取Home Assistant的所有状态"""
-        logger.info(formatted_datetime, "\033[34m[HASC]\033[0m 插件每10秒获取您家庭的所有设备状态，设备数越多时间越长")
+        logger.info(f"\033[34m[HASC]\033[0m 插件每10秒获取您家庭的所有设备状态，设备数越多时间越长")
         url = f'{self.ha_url}/api/states'
-        response = requests.get(url, headers=self.headers)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            logger.info(formatted_datetime, "\033[34m[HASC]\033[0m 获取家庭状态失败，错误码: {response.status_code}")
+        try:
+            response = requests.get(url, headers=self.headers)
+            response.raise_for_status()  # 如果响应状态码不是200，会抛出异常
+            states = response.json()
+            self.save_states_to_file(states)  # 保存状态到文件
+            return states
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"\033[34m[HASC]\033[0m 获取家庭状态失败，错误: {e}")
             return []
+
+    def save_states_to_file(self, states):
+        """将获取到的设备状态保存到本地文件"""
+        try:
+            os.makedirs('./cache', exist_ok=True)  # 确保cache目录存在
+            with open('./cache/home_assistant_stats.json', 'w', encoding='utf-8') as f:
+                json.dump(states, f, ensure_ascii=False, indent=4)
+            logger.info(f"\033[34m[HASC]\033[0m 家庭设备状态已保存至 ./cache/home_assistant_stats.json")
+        except Exception as e:
+            logger.warning(f"\033[34m[HASC]\033[0m 保存状态到文件失败: {e}")
 
     def listen_to_events(self, event_type="state_changed"):
         """监听事件，并响应特定的状态变化"""
         url = f'{self.ha_url}/api/events/{event_type}'
         while True:
-            response = requests.get(url, headers=self.headers, stream=True)
-            if response.status_code == 200:
+            try:
+                response = requests.get(url, headers=self.headers, stream=True)
+                response.raise_for_status()  # 如果响应状态码不是200，会抛出异常
                 for line in response.iter_lines():
                     if line:
                         event = json.loads(line.decode('utf-8'))
                         self.process_event(event)
-            else:
-                logger.debug(formatted_datetime, "\033[34m[HASC]\033[0m 监听失败，错误码: {response.status_code}")
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"\033[34m[HASC]\033[0m 监听失败，错误: {e}")
+                time.sleep(5)  # 失败后等待5秒再重试
             time.sleep(1)
 
     def process_event(self, event):
         """处理状态变化事件"""
-        logger.info(formatted_datetime, "\033[34m[HASC]\033[0m 指令已发送: {json.dumps(event, indent=2)}")
+        logger.info(f"\033[34m[HASC]\033[0m 指令已发送: {json.dumps(event, indent=2)}")
         entity_id = event.get('data', {}).get('entity_id')
         new_state = event.get('data', {}).get('new_state', {}).get('state')
 
         if entity_id and new_state:
-            logger.info(formatted_datetime, "\033[34m[HASC]\033[0m 已将设备 {entity_id} 更改状态至 {new_state}")
+            logger.info(f"\033[34m[HASC]\033[0m 已将设备 {entity_id} 更改至 {new_state} 状态")
             # 执行基于状态变化的动作
             if entity_id == 'light.living_room' and new_state == 'on':
-                logger.info("")
-                # 此处可以执行特定动作，例如打开窗帘等
+                logger.info(_("light_on"))
                 self.perform_action(entity_id)
 
     def perform_action(self, entity_id):
         """根据设备状态执行动作"""
-        print(formatted_datetime, "\033[34m[HASC]\033[0m 正在执行 {entity_id} 设备操作，请稍后...")
+        print(f"\033[34m[HASC]\033[0m 正在执行 {entity_id} 设备操作，请稍后...")
         # 根据实际需求调用Home Assistant API执行动作
-        # 例如：关闭灯、打开空调等
         url = f'{self.ha_url}/api/services/light/turn_off'
         payload = {
             "entity_id": entity_id
         }
-        response = requests.post(url, headers=self.headers, json=payload)
-        if response.status_code == 200:
-            print(formatted_datetime, "\033[34m[HASC]\033[0m 设备 {entity_id} 操作成功")
-        else:
-            print(formatted_datetime, "\033[34m[HASC]\033[0m 操作失败，错误码: {response.status_code}")
+        try:
+            response = requests.post(url, headers=self.headers, json=payload)
+            response.raise_for_status()  # 如果响应状态码不是200，会抛出异常
+            logger.info(_("action_performed"))
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"\033[34m[HASC]\033[0m 执行动作失败: {e}")
+            logger.info(_("action_failed"))
 
 # 配置Home Assistant的信息
 ha_url = "http://mcylyr.cn:408"  # Home Assistant实例URL
@@ -82,8 +161,24 @@ listener = HomeAssistantListener(ha_url, api_token)
 # 获取设备状态（例如，每10秒获取一次）
 while True:
     states = listener.get_states()
-    print(formatted_datetime, f"\033[34m[HASC]\033[0m 当前所有智能设备状态: {json.dumps(states, indent=2)}")
-    time.sleep(10)
+    logger.info(f"\033[34m[HASC]\033[0m 当前所有智能设备状态: {json.dumps(states, indent=2)}")
+    
+    # 解析设备信息并提取用户名称、设备类型及设备列表
+    devices_by_type = {}
 
-# 启动事件监听
-# listener.listen_to_events()
+    for device in states:
+        friendly_name = device['attributes'].get('friendly_name', '未知设备')
+        entity_id = device['entity_id']
+        device_type = entity_id.split('.')[0]  # 获取设备类型（如：light, sensor, button）
+        
+        if device_type not in devices_by_type:
+            devices_by_type[device_type] = []
+        
+        devices_by_type[device_type].append(friendly_name)
+    
+    # 输出设备类型及其包含的设备
+    logger.info(_("device_status"))
+    for device_type, devices in devices_by_type.items():
+        logger.info(f"\033[34m[HASC]\033[0m {device_type}: {', '.join(devices)}")
+    
+    time.sleep(10)
