@@ -27,8 +27,7 @@ class SystemMonitorPlugin(Plugin):
         
     # 自定义 Ctrl+C 处理函数
     def handle_sigint(self, signal, frame):
-        logger.debug("[ SystemMonitor ] 正在关闭性能监控进程...")
-        sys.exit(0)  # 优雅退出
+        self.server.exitServer("SystemMonitor 尝试强制结束异步多线程")
 
     async def stop(self):
         logger.info("[ SystemMonitor ] 正在销毁自身实例...\n")
