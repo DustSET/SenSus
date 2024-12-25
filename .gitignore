@@ -2,6 +2,7 @@ logs/
 cache/
 test/
 __pycache__/
+u_*
 *.py[cod]
 *.zip
 *.log
