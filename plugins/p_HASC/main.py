@@ -131,7 +131,7 @@ class HASCPlugin(Plugin):
                 devices_by_type[device_type].append(friendly_name)
             
             # 输出设备类型及其包含的设备
-            logger.info("\033[34m[HASC]\033[0m device_status")
+            logger.info("\033[34m[HASC]\033[0m 设备列表：")
             for device_type, devices in devices_by_type.items():
                 logger.info(f"\033[34m[HASC]\033[0m {device_type}: {', '.join(devices)}")
             
