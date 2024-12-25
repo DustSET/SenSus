@@ -30,6 +30,10 @@ class SystemMonitorPlugin(Plugin):
         logger.debug("[ SystemMonitor ] 正在关闭性能监控进程...")
         sys.exit(0)  # 优雅退出
 
+    async def stop(self):
+        logger.info("[ SystemMonitor ] 正在销毁自身实例...\n")
+        del self
+
     def get_status(self):
         # 返回当前的系统状态
         return {
