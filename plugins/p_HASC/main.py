@@ -152,8 +152,8 @@ class HomeAssistantListener:
             logger.info(_("action_failed"))
 
 # 配置Home Assistant的信息
-ha_url = "http://mcylyr.cn:408"  # Home Assistant实例URL
-api_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJhMjQ5Njc3MTI3ZjQ0OWYyYTViZTVjY2ViZjcwMjllNyIsImlhdCI6MTczNTA1NDY1MiwiZXhwIjoyMDUwNDE0NjUyfQ.1E-Xgb2DKDVfxjWbJd9UqH8WtAK4q6Wn8tA-FXF4FeQ"  # 从Home Assistant获取的长期访问令牌
+ha_url = "Your_ha_url"  # Home Assistant实例URL
+api_token = "Your_token"  # 从Home Assistant获取的长期访问令牌
 
 # 创建HomeAssistantListener实例并启动监听
 listener = HomeAssistantListener(ha_url, api_token)
