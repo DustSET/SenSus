@@ -16,13 +16,12 @@ current_language = "zh_cn"
 
 class i18n:
     def __init__(self):
-        logger.debug("\033[34m[ HASC ]\033[0m 初始化 i18n 相关...")
+        logger.debug("\033[34m[ HASC ]\033[0m 初始化 i18n 相关语言文件中...")
         # 确保创建i18n文件夹及默认语言文件
         self.ensure_i18n_folder_and_default_language()
         # 载入当前语言
         self.translations = self.load_language(current_language)
     
-
     # 创建i18n文件夹和默认的zh_cn.json文件
     def ensure_i18n_folder_and_default_language(self):
         i18n_folder = os.path.join(os.path.dirname(__file__), 'i18n')
