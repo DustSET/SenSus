@@ -23,8 +23,8 @@ config_file = os.path.join(config_dir, "config.py")
 config_content = """
 
 # 配置Home Assistant的信息
-ha_url = "http://mcylyr:408"  # Home Assistant实例URL
-api_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJlNGNiZmY1M2Y0NTE0MDliYWU2MzFhNDM2MzQ4YmFiZCIsImlhdCI6MTczNTIyMTA4MiwiZXhwIjoyMDUwNTgxMDgyfQ.stMJaTkLM4nM3Ns7e3NVd3dsNafZ9Jh1ChErpr2_5Jg"  # 从Home Assistant获取的长期访问令牌
+ha_url = "Your_Url"  # Home Assistant实例URL
+api_token = "Your_Token"  # 从Home Assistant获取的长期访问令牌
 
 """
 
