@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 # 默认语言设置为中文（zh_cn.json）
 current_language = "zh_cn"
 
+
+
 class i18n:
     def __init__(self):
         logger.debug("\033[34m[ HASC ]\033[0m 初始化 i18n 相关语言文件中...")
@@ -63,7 +65,7 @@ class i18n:
             with open(language_file, 'r', encoding='utf-8') as f:
                 return json.load(f)
         else:
-            logger.warning(f"语言文件 {language_code} 未找到. 默认使用简体中文.")
+            logger.info(f"语言文件 {language_code} 未找到. 默认使用简体中文")
             # 默认加载英文语言文件
             language_file = os.path.join(os.path.dirname(__file__), 'i18n', "zh_cn.json")
             with open(language_file, 'r', encoding='utf-8') as f:
@@ -81,10 +83,15 @@ class HASCPlugin(Plugin):
         logger.debug("[ HASC ] 设置信号处理器...")
         signal.signal(signal.SIGINT, self.handle_sigint)
 
-        self.config = None
-        self.ha_url = None
-        self.api_token = None
-
+    def ha_config(self):
+        ha_config = os.path.join(os.path.dirname(__file__), 'config')
+        # 检查i18n文件夹是否存在，不存在则创建
+        if not os.path.exists(ha_config):
+            os.makedirs(ha_config)
+            logger.info(f"\033[34m[ HASC ]\033[0m i18n文件夹不存在，已创建: {ha_config}")
+        self.config = ha_config
+        self.ha_url = ha_config.ha_url
+        self.api_token = ha_config.ha_token
 
         self.i18n = i18n()  # 初始化语言类
         try:
@@ -94,19 +101,16 @@ class HASCPlugin(Plugin):
             self.ha_url = self.config['py']['config'].get('ha_url')
             self.api_token = self.config['py']['config'].get('api_token')
 
-            
             logger.debug(f"[ HASC ] \n从配置文件获取到的 ha_url ：\n{self.ha_url}\n从配置文件获取到的 api_token ：\n{self.api_token}")
 
         except Exception as e:
             logger.error(f"[ HASC ] 加载配置文件出错: \n{e}")
-
 
         self.headers = {
             'Authorization': f'Bearer {self.api_token}',
             'Content-Type': 'application/json'
         }
         self.stats_data = []  # 初始化为空列表
-        
         self.devices_by_type = {}
         self.states = {}
 
@@ -119,7 +123,6 @@ class HASCPlugin(Plugin):
             pass # 文件不存在，但是 self.stats_data 初始化为空列表了喵
             
         self._init()
-        
         logger.info("[ HASC ] 初始化完毕\n")
 
     # 自定义 Ctrl+C 处理函数
