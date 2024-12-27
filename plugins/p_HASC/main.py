@@ -93,7 +93,7 @@ class HASCPlugin(Plugin):
             self.ha_url = self.config['py']['config'].get('ha_url')
             self.api_token = self.config['py']['config'].get('api_token')
 
-            logger.info(f"[ HASC ] \n从配置文件获取到的 ha_url ：\n{self.ha_url}\n从配置文件获取到的 ha_token ：\n{self.api_token}")
+            logger.info(f"[ HASC ] \n从配置文件获取到的 ha_url ：\n{self.ha_url}\n从配置文件获取到的 api_token ：\n{self.api_token}")
 
         except Exception as e:
             logger.error(f"[ HASC ] 加载配置文件出错: \n{e}")
@@ -131,7 +131,9 @@ class HASCPlugin(Plugin):
         if message.get('method') == "get_status":
             response = {"message": self.states}
             await websocket.send(json.dumps(response, ensure_ascii=False))
-
+        if message.get('method') == "get_person":
+            response = {"message": self.person}
+            await websocket.send(json.dumps(response, ensure_ascii=False))
         pass
 
     def _init(self):
@@ -139,34 +141,41 @@ class HASCPlugin(Plugin):
         self.monitor_thread = threading.Thread(target=self.start_get_states, daemon=True)
         self.monitor_thread.start()
 
+        self.person = None
+        self.friendly_name = None
+        self.entity_id = None
+        self.device_type = None
+        self.fresh_time = None
 
     def start_get_states(self):
         time.sleep(3)
         # 获取设备状态（例如，每10秒获取一次）
         while True:
-            
-            logger.info(f"\033[34m[ HASC ]\033[0m 插件每10秒获取您家庭的所有设备状态，设备数越多时间越长")
             states = self.get_states()
             # logger.debug(f"\033[34m[ HASC ]\033[0m 当前所有智能设备状态: {json.dumps(states, indent=2)}")
             
             # 解析设备信息并提取用户名称、设备类型及设备列表
-
             for device in states:
                 friendly_name = device['attributes'].get('friendly_name', '未知设备')
                 entity_id = device['entity_id']
                 device_type = entity_id.split('.')[0]  # 获取设备类型（如：light, sensor, button）
-                
+
                 if device_type not in self.devices_by_type:
                     self.devices_by_type[device_type] = []
-                
-                self.devices_by_type[device_type].append(friendly_name)
+                    self.devices_by_type[device_type].append(friendly_name)
+
+                if entity_id.startswith("person."):  # 判断是否是 person 类型的设备
+                    self.person = friendly_name
             
             # 输出设备类型及其包含的设备
+            logger.info(f"\033[34m[ HASC ]\033[0m 欢迎使用HASC，当前登录主人名 {self.person}")
             logger.debug("\033[34m[ HASC ]\033[0m 设备列表：\n")
             for device_type, devices in self.devices_by_type.items():
                 logger.debug(f"\033[34m[ HASC ]\033[0m {device_type}: {', '.join(devices)}")
-            
-            time.sleep(10)
+
+            self.fresh_time = int(self.config['py']['config'].get('fresh_time'))
+            time.sleep(self.fresh_time)
+            logger.info(f"\033[34m[ HASC ]\033[0m 插件每{self.fresh_time}秒获取您家庭的所有设备状态，设备数越多时间越长")
 
     def get_states(self):
         """获取Home Assistant的所有状态"""
@@ -224,7 +233,7 @@ class HASCPlugin(Plugin):
         """根据设备状态执行动作"""
         print(f"\033[34m[ HASC ]\033[0m 正在执行 {entity_id} 设备操作，请稍后...")
         # 根据实际需求调用Home Assistant API执行动作
-        url = f'{self.ha_url}/api/services/light/turn_off'
+        url = f'{self.ha_url}/api/services/{self.entity_id}/{self.new_state}'
         payload = {
             "entity_id": entity_id
         }
