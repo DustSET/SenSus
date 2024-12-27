@@ -14,8 +14,6 @@ logger = logging.getLogger(__name__)
 # 默认语言设置为中文（zh_cn.json）
 current_language = "zh_cn"
 
-
-
 class i18n:
     def __init__(self):
         logger.debug("\033[34m[ HASC ]\033[0m 初始化 i18n 相关语言文件中...")
@@ -83,15 +81,9 @@ class HASCPlugin(Plugin):
         logger.debug("[ HASC ] 设置信号处理器...")
         signal.signal(signal.SIGINT, self.handle_sigint)
 
-    def ha_config(self):
-        ha_config = os.path.join(os.path.dirname(__file__), 'config')
-        # 检查i18n文件夹是否存在，不存在则创建
-        if not os.path.exists(ha_config):
-            os.makedirs(ha_config)
-            logger.info(f"\033[34m[ HASC ]\033[0m i18n文件夹不存在，已创建: {ha_config}")
-        self.config = ha_config
-        self.ha_url = ha_config.ha_url
-        self.api_token = ha_config.ha_token
+        self.config = None
+        self.ha_url = None
+        self.api_token = None
 
         self.i18n = i18n()  # 初始化语言类
         try:
@@ -101,7 +93,7 @@ class HASCPlugin(Plugin):
             self.ha_url = self.config['py']['config'].get('ha_url')
             self.api_token = self.config['py']['config'].get('api_token')
 
-            logger.debug(f"[ HASC ] \n从配置文件获取到的 ha_url ：\n{self.ha_url}\n从配置文件获取到的 api_token ：\n{self.api_token}")
+            logger.info(f"[ HASC ] \n从配置文件获取到的 ha_url ：\n{self.ha_url}\n从配置文件获取到的 ha_token ：\n{self.api_token}")
 
         except Exception as e:
             logger.error(f"[ HASC ] 加载配置文件出错: \n{e}")
