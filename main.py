@@ -2,6 +2,7 @@
 
 import sys
 import os
+import signal
 import asyncio
 import traceback
 from log import setup_logging, logger
@@ -32,8 +33,9 @@ def main():
     finally:
         logger.info("[ SenSus ] 终止 SenSus 框架...")
         sys.exit(1)
-        logger.warning("[ SenSus ] SenSus 框架未正常停止。")
-        server.exitServer("SenSus 框架终止流程异常")
+        logger.warning("[ SenSus ] 框架终止流程异常，尝试强制关闭...")
+        pid = os.getpid()
+        os.kill(pid, signal.SIGTERM)
 
 
 if __name__ == "__main__":
