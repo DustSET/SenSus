@@ -30,8 +30,10 @@ def main():
         logger.error(traceback.format_exc())  # 打印完整的错误堆栈
         logger.error(f"[ SenSus ] SenSus 框架严重错误：\n{e}")
     finally:
-        logger.info("[ SenSus ] SenSus 框架已停止。")
+        logger.info("[ SenSus ] 终止 SenSus 框架...")
         sys.exit(1)
+        logger.warning("[ SenSus ] SenSus 框架未正常停止。")
+        server.exitServer("SenSus 框架终止流程异常")
 
 
 if __name__ == "__main__":

@@ -27,7 +27,9 @@ class SystemMonitorPlugin(Plugin):
         
     # 自定义 Ctrl+C 处理函数
     def handle_sigint(self, signal, frame):
-        self.server.exitServer("SystemMonitor 尝试强制结束异步多线程")
+        logger.info("[ SystemMonitor ] 收到退出信号，正在停止后台线程...")
+        sys.exit(0)
+        # self.server.exitServer("SystemMonitor 尝试强制结束异步多线程")
 
     async def stop(self):
         logger.info("[ SystemMonitor ] 正在销毁自身实例...\n")
