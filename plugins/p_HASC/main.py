@@ -106,6 +106,13 @@ class HASCPlugin(Plugin):
         self.devices_by_type = {}
         self.states = {}
 
+        # 初始化一些设备相关数据
+        self.person = None
+        self.friendly_name = None
+        self.entity_id = None
+        self.device_type = None
+        self.fresh_time = None
+
         # 加载已有的 home_assistant_stats.json（如果存在的话）
         try:
             with open('./cache/home_assistant_stats.json', 'r', encoding='utf-8') as f:
@@ -140,12 +147,6 @@ class HASCPlugin(Plugin):
         # 启动一个后台线程，定期获取系统信息
         self.monitor_thread = threading.Thread(target=self.start_get_states, daemon=True)
         self.monitor_thread.start()
-
-        self.person = None
-        self.friendly_name = None
-        self.entity_id = None
-        self.device_type = None
-        self.fresh_time = None
 
     def start_get_states(self):
         time.sleep(3)
