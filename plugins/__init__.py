@@ -287,7 +287,7 @@ class PluginManager:
                         task = asyncio.create_task(plugin.on_message(websocket, message))
                         task.set_name(plugin.__class__.__name__)  # 设置任务名称为插件类名
                         tasks.append(task)  # 并行处理插件消息
-                        logger.debug("[ 插件消息分发 ] 消息已分发")
+                        logger.debug("[ 插件消息分发 ] 消息已群发")
             elif plugin_name == "pluginManager":
                 logger.info(f"[ 插件消息分发 > 插件管理器事件 ] 操作对象： {plugin_name}")
                 await self.pluginManager(websocket, message)
@@ -301,7 +301,7 @@ class PluginManager:
                         task = asyncio.create_task(plugin.on_message(websocket, message))
                         task.set_name(plugin.__class__.__name__)  # 设置任务名称为插件类名
                         tasks.append(task)  # 并行处理插件消息
-                        logger.debug(f"[ 插件消息分发 ] 消息已分发给插件 {plugin_name}")
+                        # logger.debug(f"[ 插件消息分发 ] 消息已分发给插件 {plugin_name}")
 
             if tasks:
                 try:

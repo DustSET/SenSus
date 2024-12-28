@@ -8,6 +8,7 @@ from websockets.exceptions import ConnectionClosed, NegotiationError
 import urllib.parse
 import json
 import os
+import re
 import importlib
 from plugins import PluginManager
 import logging
@@ -35,10 +36,35 @@ class WebSocketServer:
         self.port = config.PORT
         self.token = config.TOKEN
 
+        # 用于存放多个 ws 连接的实例
+        self.connections = {}
+
         self.pm_list = None
         self.pm_status = 1  # 插件管理状态
         # 实例化插件管理器
         self.plugin_manager = PluginManager(self)
+
+    @classmethod
+    async def create(cls):
+        """
+        类方法进行异步初始化
+        """
+        self = cls()  # 创建类的实例
+        # 这里可以执行其他异步操作，如初始化数据库连接等
+        await self.async_initialize()  # 异步初始化
+        
+        return
+
+    async def async_initialize(self):
+        """
+        异步初始化操作
+        """
+        # 启动连接日志记录任务
+        asyncio.create_task(self.log_connections())  # 每隔 10 秒打印连接列表
+
+        # 启动 WebSocket 服务器
+        await self.start_server()  # 使用异步任务启动服务器
+
 
     def handle_sigterm(self, signum, frame):
         logger.info("[ ws服务器 ] 收到终止信号，正在关闭 ws 服务器...")
@@ -59,6 +85,26 @@ class WebSocketServer:
         logger.debug(f"[ ws服务器 ] 接收到的 Token 为：{token}")
 
         return True
+    
+    async def get_unique_connection_id(self, base_connection_id):
+        """
+        检查是否有同名项，并在标识符后加上递增数字（如 _2，_3 等）
+        """
+        connection_id = base_connection_id
+        counter = 1
+
+        # 如果已有相同标识符，则继续递增数字后缀
+        while connection_id in self.connections:
+            match = re.search(r"_(\d+)$", connection_id)  # 查找后缀数字部分
+            if match:
+                # 如果已找到类似 _2, _3 的后缀，则递增
+                counter = int(match.group(1)) + 1
+                connection_id = f"{base_connection_id}_{counter}"
+            else:
+                # 如果没有找到数字后缀，则添加 _2
+                connection_id = f"{base_connection_id}_2"
+        
+        return connection_id
 
     async def process_message(self, websocket, message):
         """
@@ -85,7 +131,6 @@ class WebSocketServer:
         except Exception as e:
             logger.error(f"[ 插件消息分发 ] 某个插件在处理消息时出错: {e}")
 
-
     async def handle_message(self, websocket):
         """
         处理 WebSocket 请求消息
@@ -100,12 +145,23 @@ class WebSocketServer:
             ua = websocket.request.headers.get('User-Agent')
             logger.info(f"[ ws服务器 ] {connection} | {origin} > ws://{host} ")
             logger.debug(f"[ ws服务器 ] 用户 UA | \n {ua} ")
+            sec_websocket_key = websocket.request.headers.get('Sec-WebSocket-Key')
             # 解析 Sec-WebSocket-Protocol 头部
             protocol_string = websocket.request.headers.get('Sec-WebSocket-Protocol')
             if protocol_string:
                 protocol_list = [item.strip() for item in protocol_string.split(',')]
                 token = protocol_list[0]  # token 在协议字段的第一部分
+                # 检测协议头中的 token 是否与配置文件一致
                 if await self.validate_token(token): pass
+
+                if origin and sec_websocket_key:
+                    connection_id = f"{sec_websocket_key}_{origin}"
+
+                    # 检查是否已存在该标识符
+                    connection_id = await self.get_unique_connection_id(connection_id)
+                    # 保存 WebSocket 连接
+                    self.connections[connection_id] = websocket
+                    logger.info(f"[ ws服务器 ] WebSocket 连接已建立，Connection ID: {connection_id}")
 
                 try:
                     async for message in websocket:
@@ -136,9 +192,15 @@ class WebSocketServer:
             logger.warning(f"[ ws服务器 ] 错误的连接请求：{e}")
             await websocket.close(code=1001, reason="Unexpected error")
 
+    async def log_connections(self):
+        """
+        每隔 10 秒钟打印一次当前的连接列表
+        """
+        while True:
+            await asyncio.sleep(10)  # 每隔 10 秒打印一次连接列表
+            logger.debug(f"[ ws服务器 ] 当前连接列表: {list(self.connections.keys())}")
 
-
-    async def start(self):
+    async def start_server(self):
         """
         启动 WebSocket 服务器并启动消息处理任务
         """
@@ -153,8 +215,8 @@ class WebSocketServer:
                 # 等待服务器关闭
                 await self.server.wait_closed()
                 logger.info(f"[ ws服务器 ] WebSocket 服务器已关闭")
-                
-                sys.exit(1)
+
+                return
 
             except NegotiationError as e:
                 # 捕获协议协商错误
@@ -164,16 +226,16 @@ class WebSocketServer:
             except PermissionError as e:
                 logging.error(f"[ ws服务器 ] 权限错误：无法绑定端口 {self.port}. 请检查是否有足够的权限，或该端口是否被其他进程占用。")
                 logging.exception(e)
-                sys.exit(1)  
+                return 
 
             except OSError as e:
                 # 如果是 OSError 也可能是其他网络相关的错误
                 logging.error(f"[ ws服务器 ] OSError 错误：无法绑定地址 {self.host}:{self.port}")
                 logging.exception(e)
-                sys.exit(1)
+                return
 
             except Exception as e:
                 # 捕获其他未预料的错误
                 logging.error("[ ws服务器 ] 服务器启动失败")
                 logging.exception(e)
-                sys.exit(1)
+                return

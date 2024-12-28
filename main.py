@@ -23,7 +23,7 @@ def main():
     # 创建并启动 WebSocket 服务器
     try:
         server = WebSocketServer()
-        asyncio.run(server.start())
+        asyncio.run(server.create())
     except KeyboardInterrupt:
         logger.info("[ SenSus ] 收到退出信号，正在优雅地关闭程序...")
     except Exception as e:
