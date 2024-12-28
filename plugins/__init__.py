@@ -266,16 +266,16 @@ class PluginManager:
         if plugin_name != "pluginManager":
             # 判断插件是否在插件列表中
             if plugin_name not in self.folder_plugins and plugin_name not in self.file_plugins:
-                logger.warning(f"[ 插件消息分发 ] 插件 {plugin_name} 未加载，取消消息分发")
+                logger.debug(f"[ 插件消息分发 ] 插件 {plugin_name} 未加载，取消消息分发")
                 return  # 未加载该插件，直接取消消息分发
             
             # 判断插件是否启用
             if plugin_name in self.folder_plugins and not self.folder_plugins[plugin_name].get('enable', False):
-                logger.warning(f"[ 插件消息分发 ] 插件 {plugin_name} 在 folder_plugins 中未启用，取消消息分发")
+                logger.debug(f"[ 插件消息分发 ] 插件 {plugin_name} 在 folder_plugins 中未启用，取消消息分发")
                 return  # 插件未启用，取消消息分发
 
             if plugin_name in self.file_plugins and not self.file_plugins[plugin_name].get('enable', False):
-                logger.warning(f"[ 插件消息分发 ] 插件 {plugin_name} 在 file_plugins 中未启用，取消消息分发")
+                logger.debug(f"[ 插件消息分发 ] 插件 {plugin_name} 在 file_plugins 中未启用，取消消息分发")
                 return  # 插件未启用，取消消息分发
                     
         async with semaphore:

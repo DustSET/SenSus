@@ -122,7 +122,9 @@ class WebSocketServer:
         semaphore = asyncio.Semaphore(200)  # 限制并发处理任务数量为200
 
         try:
+
             await self.plugin_manager.dispatch_message(websocket, message, semaphore)
+            
         except KeyError as e:
             if str(e) == "'喵喵喵'":
                 logger.debug("[ 插件消息分发 ] 收到的消息中缺少 '喵喵喵' 字段")
@@ -164,8 +166,10 @@ class WebSocketServer:
                     logger.info(f"[ ws 服务器 ] WebSocket 连接已建立，Connection ID: {connection_id}")
 
                 try:
+
                     async for message in websocket:
                         await self.process_message(websocket, message)
+
                 except Exception as e:
                     if "no close frame received or sent" in str(e):
                         logger.debug(f"[ ws 服务器 ] 未接收或发送关闭帧: {e}")

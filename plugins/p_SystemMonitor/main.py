@@ -35,7 +35,7 @@ class SystemMonitorPlugin(Plugin):
         logger.info("[ SystemMonitor ] 正在销毁自身实例...\n")
         del self
 
-    def get_status(self):
+    async def get_status(self):
         # 返回当前的系统状态
         return {
             'cpu': self.cpuMonitor.response,
@@ -50,7 +50,7 @@ class SystemMonitorPlugin(Plugin):
         # logger.debug(f"[ SystemMonitor ] 收到消息：\n{message}")
         if message.get('method') == "get_status":
             # logger.debug(f"[ SystemMonitor > get_status ] 查询系统状态")
-            response = {"message": self.get_status()}
+            response = {"plugin": "SystemMonitor","message": await self.get_status()}
             await websocket.send(json.dumps(response, ensure_ascii=False))
             return
         logger.warning(f"[ SystemMonitor ] 不支持的操作：{message.get('message')}")

@@ -136,10 +136,10 @@ class HASCPlugin(Plugin):
         # 可以根据消息执行相应的操作
         # logger.debug(f"\033[34m[ HASC ]\033[0m 收到消息：\n{message}")
         if message.get('method') == "get_status":
-            response = {"message": self.states}
+            response = {"plugin": "HASC","message": self.states}
             await websocket.send(json.dumps(response, ensure_ascii=False))
         if message.get('method') == "get_person":
-            response = {"message": self.person}
+            response = {"plugin": "HASC","message": self.person}
             await websocket.send(json.dumps(response, ensure_ascii=False))
         pass
 

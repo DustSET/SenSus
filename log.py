@@ -189,7 +189,6 @@ def setup_logging(log_level_str="INFO"):
     intercept_handler.setLevel(log_level)  # 设置日志级别
     intercept_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
     
-
     # 配置 root logger
     logging.getLogger().setLevel(logging.DEBUG)     # 根日志管理器使用 DEBUG 级别以捕获所有日志
     logging.getLogger().addHandler(file_handler)
@@ -204,7 +203,7 @@ def setup_logging(log_level_str="INFO"):
     # 将 StreamHandler 添加到 root logger
     logging.getLogger().addHandler(console_handler)
 
-
+    """  暂时禁用该功能
     # 同步创建 debug 级别的日志
     debug_log_filename = os.path.join(debug_dir, f"latest{suffix}")
 
@@ -215,6 +214,7 @@ def setup_logging(log_level_str="INFO"):
 
     # 将 debug 级别日志添加到 root logger
     logging.getLogger().addHandler(debug_file_handler)
+    """
 
 def manage_log_files(directory, suffix, keep_count=30):
     """管理日志文件，确保目录中保留最新的 keep_count 个日志文件"""

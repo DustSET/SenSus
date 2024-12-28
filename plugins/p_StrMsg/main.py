@@ -59,7 +59,7 @@ class StrMsgPlugin(Plugin):
                 # logger.debug(f"[ StrMsg > get_latest_messages ] 获取最新的 {count} 条消息")
                 
                 # 获取最新的消息
-                response = await self.get_latest_messages_async(count)
+                response = {"plugin": "StrMsg","message": await self.get_latest_messages_async(count)}
                 
             except ValueError as ve:
                 logger.error(f"[ StrMsg ] 无效的 count 参数：{ve}")
