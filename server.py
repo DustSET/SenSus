@@ -179,11 +179,9 @@ class WebSocketServer:
         except websockets.exceptions.NegotiationError as e:
             logger.warning(f"[ ws服务器 ] 缺少子协议: {e}")
             await websocket.close(code=1942, reason="缺少子协议")
-
         except websockets.exceptions.ConnectionClosed as e:
             # 捕获连接关闭错误
             logging.error(f"[ ws服务器 ] 连接已关闭，错误代码 {e.code}: {e.reason}")
-
         except websockets.exceptions.WebSocketException as e:
             # 捕获 WebSocket 异常
             logging.error(f"[ ws服务器 ] 发生 WebSocket 异常: {e}")
@@ -191,6 +189,10 @@ class WebSocketServer:
         except Exception as e:
             logger.warning(f"[ ws服务器 ] 错误的连接请求：{e}")
             await websocket.close(code=1001, reason="Unexpected error")
+        finally:
+            # 无论连接是否正常关闭，都会进入此块，进行清理操作
+            self.remove_connection(connection_id)
+            logger.info(f"[ ws服务器 ] WebSocket 连接已断开，Connection ID: {connection_id}")
 
     async def log_connections(self):
         """
@@ -199,6 +201,16 @@ class WebSocketServer:
         while True:
             await asyncio.sleep(10)  # 每隔 10 秒打印一次连接列表
             logger.debug(f"[ ws服务器 ] 当前连接列表: {list(self.connections.keys())}")
+
+    def remove_connection(self, connection_id):
+        """
+        移除连接
+        """
+        if connection_id in self.connections:
+            del self.connections[connection_id]
+            logger.info(f"连接 {connection_id} 已被移除")
+        else:
+            logger.warning(f"尝试移除一个不存在的连接: {connection_id}")
 
     async def start_server(self):
         """
