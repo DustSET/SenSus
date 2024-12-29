@@ -9,3 +9,4 @@ u_*
 *.zip
 *.log
 *.db
+config/config.py
