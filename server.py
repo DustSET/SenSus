@@ -105,6 +105,7 @@ class WebSocketServer:
                 connection_id = f"{base_connection_id}_2"
         
         return connection_id
+        return True
 
     async def process_message(self, websocket, message):
         """
@@ -143,6 +144,7 @@ class WebSocketServer:
             origin = websocket.request.headers.get('Origin')
             connection = websocket.request.headers.get('Connection')
             connection = connection if connection is not None else "非在线地址"
+            connection = connection if connection is not None else "非在线地址"
             host = websocket.request.headers.get('Host')
             ua = websocket.request.headers.get('User-Agent')
             logger.info(f"[ ws 服务器 ] {connection} | {origin} > ws://{host} ")
@@ -155,6 +157,7 @@ class WebSocketServer:
                 token = protocol_list[0]  # token 在协议字段的第一部分
                 mark = protocol_list[1]  # mark 在协议字段的第二部分
                 # 检测协议头中的 token 是否与配置文件一致
+                if await self.validate_token(token): pass
                 if await self.validate_token(token): pass
 
                 if origin and sec_websocket_key:
@@ -225,7 +228,13 @@ class WebSocketServer:
             try:
                 self.server = await websockets.serve(self.handle_message, self.host, self.port, subprotocols=[config.TOKEN])# 支持的子协议
                 logger.info(f"[ ws 服务器 ] WebSocket 服务器启动在地址 ws://{self.host}:{self.port}")
+        while True:
+            try:
+                self.server = await websockets.serve(self.handle_message, self.host, self.port, subprotocols=[config.TOKEN])# 支持的子协议
+                logger.info(f"[ ws服务器 ] WebSocket 服务器启动在地址 ws://{self.host}:{self.port}")
 
+                # 初始化插件管理器并加载插件
+                await self.plugin_manager.load_plugins('plugins', 'plugins/example') 
                 # 初始化插件管理器并加载插件
                 await self.plugin_manager.load_plugins('plugins', 'plugins/example') 
 
@@ -244,15 +253,40 @@ class WebSocketServer:
                 logging.error(f"[ ws 服务器 ] 权限错误：无法绑定端口 {self.port}. 请检查是否有足够的权限，或该端口是否被其他进程占用。")
                 logging.exception(e)
                 return 
+                # 等待服务器关闭
+                await self.server.wait_closed()
+                logger.info(f"[ ws服务器 ] WebSocket 服务器已关闭")
+                
+                sys.exit(1)
+
+            except NegotiationError as e:
+                # 捕获协议协商错误
+                logging.error(f"[ ws服务器 ] 认证错误，无效的子协议，客户端与服务器的协议或 token 不匹配。\n{e}")
+                # 这里可以做一些处理，比如记录日志、通知管理员等
+            
+            except PermissionError as e:
+                logging.error(f"[ ws服务器 ] 权限错误：无法绑定端口 {self.port}. 请检查是否有足够的权限，或该端口是否被其他进程占用。")
+                logging.exception(e)
+                sys.exit(1)  
 
             except OSError as e:
                 # 如果是 OSError 也可能是其他网络相关的错误
                 logging.error(f"[ ws 服务器 ] OSError 错误：无法绑定地址 {self.host}:{self.port}")
                 logging.exception(e)
                 return
+            except OSError as e:
+                # 如果是 OSError 也可能是其他网络相关的错误
+                logging.error(f"[ ws服务器 ] OSError 错误：无法绑定地址 {self.host}:{self.port}")
+                logging.exception(e)
+                sys.exit(1)
 
             except Exception as e:
                 # 捕获其他未预料的错误
                 logging.error("[ ws 服务器 ] 服务器启动失败")
                 logging.exception(e)
                 return
+            except Exception as e:
+                # 捕获其他未预料的错误
+                logging.error("[ ws服务器 ] 服务器启动失败")
+                logging.exception(e)
+                sys.exit(1)
