@@ -244,4 +244,3 @@ class HASCPlugin(Plugin):
             logger.info("\033[34m[ HASC ]\033[0m action_performed")
         except requests.exceptions.RequestException as e:
             logger.warning(f"\033[34m[ HASC ]\033[0m 执行动作失败: {e}")
-            logger.info("\033[34m[ HASC ]\033[0m action_failed")
