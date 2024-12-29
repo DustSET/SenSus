@@ -27,10 +27,15 @@ class SystemMonitorPlugin(Plugin):
         
     # 自定义 Ctrl+C 处理函数
     def handle_sigint(self, signal, frame):
-        logger.debug("[ SystemMonitor ] 正在关闭性能监控进程...")
-        sys.exit(0)  # 优雅退出
+        logger.info("[ SystemMonitor ] 收到退出信号，正在停止后台线程...")
+        sys.exit(0)
+        # self.server.exitServer("SystemMonitor 尝试强制结束异步多线程")
 
-    def get_status(self):
+    async def stop(self):
+        logger.info("[ SystemMonitor ] 正在销毁自身实例...\n")
+        del self
+
+    async def get_status(self):
         # 返回当前的系统状态
         return {
             'cpu': self.cpuMonitor.response,
@@ -45,7 +50,7 @@ class SystemMonitorPlugin(Plugin):
         # logger.debug(f"[ SystemMonitor ] 收到消息：\n{message}")
         if message.get('method') == "get_status":
             # logger.debug(f"[ SystemMonitor > get_status ] 查询系统状态")
-            response = {"message": self.get_status()}
+            response = {"plugin": "SystemMonitor","message": await self.get_status()}
             await websocket.send(json.dumps(response, ensure_ascii=False))
             return
         logger.warning(f"[ SystemMonitor ] 不支持的操作：{message.get('message')}")

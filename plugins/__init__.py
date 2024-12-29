@@ -14,7 +14,10 @@ class Plugin:
         self.server = WebSocketServer
 
     async def on_message(self, message):
-        raise NotImplementedError("[ 插件管理器 ] 子类(插件入口main.py)必须实现 on_message 方法")
+        raise NotImplementedError("[ 插件管理器 ] 插件主类必须实现 on_message 方法")
+    
+    async def stop(self, message):
+        raise NotImplementedError("[ 插件管理器 ] 插件主类必须实现 stop 方法")
     
 
 class PluginManager:
@@ -204,6 +207,9 @@ class PluginManager:
                 return True
             logger.error(f"[ 插件管理器 ] 插件 {plugin_name} 加载失败，文件命名不规范")
             return False
+        except ModuleNotFoundError as e:
+            logger.error(f"[ 插件管理器 ] 插件模块 {module_path} 未找到: {e}")
+            return False
         except KeyError as e:
             if str(e) == "'喵喵喵'":
                 logger.debug("[ 插件管理器 ] 收到的消息中缺少 '喵喵喵' 字段")
@@ -249,26 +255,29 @@ class PluginManager:
                     if len(lines) > 1 and lines[1].startswith('# __version__'):
                         version = lines[1].split('=')[1].strip().strip('"').strip("'")
         return version
-        
+ 
+
     async def dispatch_message(self, websocket, message, semaphore):
         """异步分发消息"""
         # 获取消息中插件的名称
         plugin_name = message.get('plugin')
+        method = message.get('method')
 
-        # 判断插件是否在插件列表中
-        if plugin_name not in self.folder_plugins and plugin_name not in self.file_plugins:
-            logger.warning(f"[ 插件消息分发 ] 插件 {plugin_name} 未加载，取消消息分发")
-            return  # 未加载该插件，直接取消消息分发
-        
-        # 判断插件是否启用
-        if plugin_name in self.folder_plugins and not self.folder_plugins[plugin_name].get('enable', False):
-            logger.warning(f"[ 插件消息分发 ] 插件 {plugin_name} 在 folder_plugins 中未启用，取消消息分发")
-            return  # 插件未启用，取消消息分发
+        if plugin_name != "pluginManager":
+            # 判断插件是否在插件列表中
+            if plugin_name not in self.folder_plugins and plugin_name not in self.file_plugins:
+                logger.debug(f"[ 插件消息分发 ] 插件 {plugin_name} 未加载，取消消息分发")
+                return  # 未加载该插件，直接取消消息分发
+            
+            # 判断插件是否启用
+            if plugin_name in self.folder_plugins and not self.folder_plugins[plugin_name].get('enable', False):
+                logger.debug(f"[ 插件消息分发 ] 插件 {plugin_name} 在 folder_plugins 中未启用，取消消息分发")
+                return  # 插件未启用，取消消息分发
 
-        if plugin_name in self.file_plugins and not self.file_plugins[plugin_name].get('enable', False):
-            logger.warning(f"[ 插件消息分发 ] 插件 {plugin_name} 在 file_plugins 中未启用，取消消息分发")
-            return  # 插件未启用，取消消息分发
-                
+            if plugin_name in self.file_plugins and not self.file_plugins[plugin_name].get('enable', False):
+                logger.debug(f"[ 插件消息分发 ] 插件 {plugin_name} 在 file_plugins 中未启用，取消消息分发")
+                return  # 插件未启用，取消消息分发
+                    
         async with semaphore:
             tasks = []
             if plugin_name == 'all':
@@ -278,16 +287,21 @@ class PluginManager:
                         task = asyncio.create_task(plugin.on_message(websocket, message))
                         task.set_name(plugin.__class__.__name__)  # 设置任务名称为插件类名
                         tasks.append(task)  # 并行处理插件消息
-                        logger.debug("[ 插件消息分发 ] 消息已分发")
+                        logger.debug("[ 插件消息分发 ] 消息已群发")
+            elif plugin_name == "pluginManager":
+                logger.info(f"[ 插件消息分发 > 插件管理器事件 ] 操作对象： {plugin_name}")
+                await self.pluginManager(websocket, message)
+
             else:
                 # 如果是指定插件名，只分发给对应插件
                 plugin_class = plugin_name + "Plugin"
                 for plugin in self.plugins.get("loaded_plugins", []):
                     if hasattr(plugin, 'on_message') and plugin.__class__.__name__ == plugin_class:
+                        
                         task = asyncio.create_task(plugin.on_message(websocket, message))
                         task.set_name(plugin.__class__.__name__)  # 设置任务名称为插件类名
                         tasks.append(task)  # 并行处理插件消息
-                        logger.debug(f"[ 插件消息分发 ] 消息已分发给插件 {plugin_name}")
+                        # logger.debug(f"[ 插件消息分发 ] 消息已分发给插件 {plugin_name}")
 
             if tasks:
                 try:
@@ -301,3 +315,148 @@ class PluginManager:
                             else:
                                 logger.error(f"[ 插件管理器 ] 插件类 {plugin_name} 处理消息时发生错误: {task.exception()}")
                                 logger.error(traceback.format_exc())  # 打印完整的错误堆栈
+
+
+
+
+
+
+
+
+    # 以下为插件管理器拓展功能
+        
+    async def pluginManager(self, websocket, message):
+
+        # 获取消息中插件的名称
+        plugin_name = message.get('message')
+        method = message.get('method')
+
+        plugin_class = plugin_name + "Plugin"
+        loaded_plugin = next((plugin for plugin in self.plugins["loaded_plugins"] if plugin.__class__.__name__ == plugin_class), None)
+        logger.debug(f"[ 插件管理事件 ] 本次选取的实例：\n{loaded_plugin}")
+        
+        if loaded_plugin:
+            # 插件已加载
+            if method == "reload":
+                logger.info(f"[ 插件管理事件 ] 重启插件： {plugin_name}...")
+                reload = await self.reload_plugin(loaded_plugin, plugin_name)
+                if reload:
+                    response = {"message": f"{plugin_name} 重启成功"}
+                    await websocket.send(json.dumps(response, ensure_ascii=False))
+            elif method == "stop":
+                logger.info(f"[ 插件管理事件 ] 停止插件： {plugin_name}...")
+                unload = await self._unload_plugin(loaded_plugin, plugin_name)
+                if unload:
+                    response = {"message": f"{plugin_name} 停止成功"}
+                    await websocket.send(json.dumps(response, ensure_ascii=False))
+            else:
+                logger.warning(f"[ 插件管理事件 ] 不支持的方法！")
+
+        else:
+            if method == "load":
+                logger.info(f"[ 插件管理事件 ] 加载插件： {plugin_name}...")
+                unload = await self._toload_plugin(plugin_name)
+                if unload:
+                    response = {"message": f"{plugin_name} 加载成功"}
+                    await websocket.send(json.dumps(response, ensure_ascii=False))
+            else:
+                logger.error(f"[ 插件管理事件 ] 插件 {plugin_name} 未加载，暂无相关操作")
+
+    """  
+
+    EntranceToken
+
+    pluginManager
+
+    reload
+
+    SystemMonitor
+
+    """
+
+    def check_plugin_type(self, plugin_name):
+        """判断插件类型（文件夹插件还是单文件插件）"""
+        
+        p_plugin_name = "p_" + plugin_name
+        
+        # 判断是否是文件夹插件
+        if p_plugin_name in self.plugins["folder_plugins"]:
+            return "folder_plugin"  # 文件夹插件
+        
+        # 判断是否是单文件插件
+        elif p_plugin_name in self.plugins["file_plugins"]:
+            return "file_plugin"  # 单文件插件
+        
+        # 如果都不存在，返回未找到插件
+        else:
+            logger.error(f"[ 插件管理事件 / 插件重载 ] {plugin_name} 不在启动列表中。")
+            return False  # 未找到插件
+
+    async def _unload_plugin(self, loaded_plugin, plugin_name):
+        """卸载插件的功能"""
+        try:
+
+            # 停止插件的活动：调用 stop() 方法
+            try:
+                if hasattr(loaded_plugin, "stop"):
+                    await loaded_plugin.stop()  # 停止插件
+                    logger.info(f"[ 插件管理事件 / 插件卸载 ] 插件 {plugin_name} 停止成功")
+                else:
+                    logger.warning(f"[ 插件管理事件 / 插件卸载 ] 插件 {plugin_name} 没有定义 stop() 方法")
+            except Exception as e:
+                logger.error(f"[ 插件管理事件 / 插件卸载 ] 停止插件 {plugin_name} 时出现错误: {e}")
+
+            # 卸载当前插件
+            self.plugins["loaded_plugins"].remove(loaded_plugin)
+            logger.info(f"[ 插件管理事件 / 插件卸载 ] 插件 {plugin_name} 已卸载")
+            return True
+        except Exception as e:
+            logger.error(f"[ 插件管理事件 / 插件卸载 ] 卸载插件 {plugin_name} 时出现错误: {e}")
+            return False
+        
+    async def _toload_plugin(self, plugin_name):
+        
+        logger.debug(f"[ 插件管理事件 / 插件加载 ] 开始初始化插件 {plugin_name} ...\n")
+        plugin_type = self.check_plugin_type(plugin_name)
+        if plugin_type == "folder_plugin":
+            p_plugin_name = "p_" + plugin_name
+            module_path = f"plugins.{p_plugin_name}.main"
+        elif plugin_type == "file_plugin":
+            p_plugin_name = "p_" + plugin_name
+            module_path = f"plugins.example.{p_plugin_name}"
+        else:
+            # logger.error(f"[ 插件管理器 ] {plugin_name} 不存在。")
+            return False
+        
+        logger.info("_____________________________")
+
+        # 重新加载插件
+        if await self._load_plugin(module_path, p_plugin_name):
+            logger.info(f"[ 插件管理事件 / 手动插件加载 ] 插件 {plugin_name} 重载成功")
+            
+            logger.info("-----------------------------")
+            return True
+        else:
+            logger.error(f"[ 插件管理事件 / 手动插件加载 ] 插件 {plugin_name} 重载失败")
+            
+            logger.info("-----------------------------")
+            return False
+
+ 
+    async def reload_plugin(self, loaded_plugin, plugin_name):
+        """重载指定插件"""
+
+        """调试用的这段        
+                logger.debug(f"[ 插件管理事件 / 插件重载 ] 已加载实例列表：\n{self.plugins["loaded_plugins"]}")
+                for plugin in self.plugins["loaded_plugins"]:
+                    logger.debug(f"[ 插件管理事件 / 插件重载 ] 已加载的插件名称: {plugin.__class__.__name__}, 插件实例: {plugin}")
+        """
+
+        logger.info(f"[ 插件管理事件 / 插件重载 ] 正在重载插件: {plugin_name}...\n")
+
+        # 卸载插件
+        if await self._unload_plugin(loaded_plugin, plugin_name):
+            logger.debug(f"[ 插件管理事件 / 插件重载 ] 插件 {plugin_name} 已成功卸载")
+
+        if await self._toload_plugin(plugin_name):
+            logger.debug(f"[ 插件管理事件 / 插件重载 ] 插件 {plugin_name} 初始化成功\n")

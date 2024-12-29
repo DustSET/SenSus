@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 webhook_bp = APIRouter()
 
 # 初始化数据库服务
-db_service = DBservice(app=None)
+db_service = DBservice(app=None, server=None)
 
 icon_url = "http://klk.aethereiva.cn/image/app/Fluent/Fluent.png"
 

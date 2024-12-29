@@ -27,7 +27,7 @@ class StrMsgPlugin(Plugin):
 
         # 初始化服务
         logger.info("[ StrMsg ] 实例化服务模块...")
-        self.services = Services(self.routes.app)
+        self.services = Services(self.routes.app, self.server)
 
         logger.info("[ StrMsg ] 初始化完毕\n")
 
@@ -36,6 +36,10 @@ class StrMsgPlugin(Plugin):
     def handle_sigint(self, signal, frame):
         logger.debug("[ StrMsg ] 正在关闭 通知聚合 进程...")
         sys.exit(0)  # 优雅退出
+
+    async def stop(self):
+        logger.info("[ SystemMonitor ] 正在销毁自身实例...\n")
+        del self
 
     async def on_message(self, websocket, message):
         # logger.debug(f"[ StrMsg ] 收到消息：\n{message}")
@@ -55,7 +59,7 @@ class StrMsgPlugin(Plugin):
                 # logger.debug(f"[ StrMsg > get_latest_messages ] 获取最新的 {count} 条消息")
                 
                 # 获取最新的消息
-                response = await self.get_latest_messages_async(count)
+                response = {"plugin": "StrMsg","message": await self.get_latest_messages_async(count)}
                 
             except ValueError as ve:
                 logger.error(f"[ StrMsg ] 无效的 count 参数：{ve}")

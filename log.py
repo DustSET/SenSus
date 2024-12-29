@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 import os
 import random
 import string
+import json
+from collections import deque
 import configparser
 import concurrent.futures
 from colorama import Fore, Style
@@ -13,6 +15,7 @@ executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
 # 用于保存文件句柄，方便手动关闭
 log_file_handler = None
 
+logs = None
 
 # 用于记录过去2小时内WARNING和ERROR日志计数的类
 class LogLevelCounter:
@@ -57,20 +60,25 @@ class LogLevelCounter:
 
 loglevelcounter = LogLevelCounter()
 
-
 class InterceptHandler(logging.Handler):
     """日志转发器"""
-    def __init__(self):
+    def __init__(self, max_logs=200):
         super().__init__()
-        # self.logs = []  # 存储日志的列表，用于实时截取日志
+        logs = deque(maxlen=max_logs)  # 使用 deque 存储日志，最大长度为 200
 
-    def emit(self, record):
+
+    async def emit(self, record):
         try:
+            msg = self.format(record)
+            logs.append(msg)  # 将新日志加入到队列中
+
+            """ 
             levelname = record.levelname
             if levelname == "WARNING":
                 loglevelcounter.increment_warning()
             if levelname == "ERROR":
-                loglevelcounter.increment_error()
+                loglevelcounter.increment_error() 
+            """
             # msg = self.format(record)
             # 截取日志内容，这里你可以将日志保存到日志列表，或者进行其他处理
             # self.logs.append(msg)  # 将日志内容添加到列表中
@@ -109,8 +117,7 @@ def renameLog(latest_log_path, old_log_filename):
             logger.warning("日志文件被占用，正在等待解除占用...")
             time.sleep(1)
 
-
-def setup_logging(log_level_str="INFO"):
+async def setup_logging(log_level_str="INFO"):
     """设置日志记录"""
     
     # 确保启用ANSI转义码（仅在Windows上）
@@ -184,12 +191,6 @@ def setup_logging(log_level_str="INFO"):
     file_handler.setLevel(log_level)
     file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
 
-    # 创建一个 InterceptHandler 来转发日志
-    intercept_handler = InterceptHandler()
-    intercept_handler.setLevel(log_level)  # 设置日志级别
-    intercept_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
-    
-
     # 配置 root logger
     logging.getLogger().setLevel(logging.DEBUG)     # 根日志管理器使用 DEBUG 级别以捕获所有日志
     logging.getLogger().addHandler(file_handler)
@@ -204,7 +205,11 @@ def setup_logging(log_level_str="INFO"):
     # 将 StreamHandler 添加到 root logger
     logging.getLogger().addHandler(console_handler)
 
+    # 转发
+    intercept_handler = InterceptHandler()
+    logging.getLogger().addHandler(intercept_handler)
 
+    """  暂时禁用该功能
     # 同步创建 debug 级别的日志
     debug_log_filename = os.path.join(debug_dir, f"latest{suffix}")
 
@@ -215,6 +220,7 @@ def setup_logging(log_level_str="INFO"):
 
     # 将 debug 级别日志添加到 root logger
     logging.getLogger().addHandler(debug_file_handler)
+    """
 
 def manage_log_files(directory, suffix, keep_count=30):
     """管理日志文件，确保目录中保留最新的 keep_count 个日志文件"""

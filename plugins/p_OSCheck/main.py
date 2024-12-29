@@ -61,8 +61,10 @@ class OSCheckPlugin(Plugin):
         """
         # 检查是否在 Linux 环境下，且是否在 Termux 中
         return (platform.system() == "Linux" and 'TERMUX_VERSION' in os.environ) or os.path.exists('/data/data/com.termux/')
-    
 
+    async def stop(self):
+        logger.info("[ OSCheck ] 正在销毁自身实例...\n")
+        del self
 
     async def on_message(self, websocket, message):
         # 可以根据消息执行相应的操作
