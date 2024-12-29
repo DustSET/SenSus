@@ -3,7 +3,7 @@ HOST = '0.0.0.0'
 PORT = 11120
 TOKEN = 'EntranceToken'
 
-LOG_LEVEL = 'debug'
+LOG_LEVEL = 'info'
 VER = '0.1.0'
 VER_CODE = '1'
 
