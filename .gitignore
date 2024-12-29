@@ -1,7 +1,7 @@
 logs/
 cache/
 /config/*
-!/config/config.py
+/config/config.py
 test/
 __pycache__/
 p_test/
