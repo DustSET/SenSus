@@ -16,7 +16,7 @@ def main():
     os.chdir(project_root)
     
     # 设置日志记录
-    setup_logging(config.LOG_LEVEL)
+    asyncio.run(setup_logging(config.LOG_LEVEL))
 
     logger.info(f"[ SenSus ] SenSus {config.VER} 正在启动...\n")
 

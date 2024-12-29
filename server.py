@@ -19,6 +19,9 @@ from conf import ConfigLoader
 # 获取模块级别的 logger
 logger = logging.getLogger(__name__)
 
+# 用于存放多个 ws 连接的实例
+connections = {}
+
 class WebSocketServer:
     def __init__(self):
         # 监听 SIGTERM 信号
@@ -36,8 +39,6 @@ class WebSocketServer:
         self.port = config.PORT
         self.token = config.TOKEN
 
-        # 用于存放多个 ws 连接的实例
-        self.connections = {}
 
         self.pm_list = None
         self.pm_status = 1  # 插件管理状态
@@ -59,7 +60,6 @@ class WebSocketServer:
         """
         异步初始化操作
         """
-        # 启动连接日志记录任务
         asyncio.create_task(self.log_connections())  # 每隔 10 秒打印连接列表
 
         # 启动 WebSocket 服务器
@@ -94,7 +94,7 @@ class WebSocketServer:
         counter = 1
 
         # 如果已有相同标识符，则继续递增数字后缀
-        while connection_id in self.connections:
+        while connection_id in connections:
             match = re.search(r"_(\d+)$", connection_id)  # 查找后缀数字部分
             if match:
                 # 如果已找到类似 _2, _3 的后缀，则递增
@@ -124,7 +124,7 @@ class WebSocketServer:
         try:
 
             await self.plugin_manager.dispatch_message(websocket, message, semaphore)
-            
+
         except KeyError as e:
             if str(e) == "'喵喵喵'":
                 logger.debug("[ 插件消息分发 ] 收到的消息中缺少 '喵喵喵' 字段")
@@ -153,16 +153,17 @@ class WebSocketServer:
             if protocol_string:
                 protocol_list = [item.strip() for item in protocol_string.split(',')]
                 token = protocol_list[0]  # token 在协议字段的第一部分
+                mark = protocol_list[1]  # mark 在协议字段的第二部分
                 # 检测协议头中的 token 是否与配置文件一致
                 if await self.validate_token(token): pass
 
                 if origin and sec_websocket_key:
-                    connection_id = f"{sec_websocket_key}_{origin}"
+                    connection_id = f"{mark}_{origin}_{sec_websocket_key}"
 
                     # 检查是否已存在该标识符
                     connection_id = await self.get_unique_connection_id(connection_id)
                     # 保存 WebSocket 连接
-                    self.connections[connection_id] = websocket
+                    connections[connection_id] = websocket
                     logger.info(f"[ ws 服务器 ] WebSocket 连接已建立，Connection ID: {connection_id}")
 
                 try:
@@ -204,14 +205,14 @@ class WebSocketServer:
         """
         while True:
             await asyncio.sleep(10)  # 每隔 10 秒打印一次连接列表
-            logger.debug(f"[ ws 会话管理 ] 当前连接列表: {list(self.connections.keys())}")
+            logger.debug(f"[ ws 会话管理 ] 当前连接列表: {list(connections.keys())}")
 
     def remove_connection(self, connection_id):
         """
         移除连接
         """
-        if connection_id in self.connections:
-            del self.connections[connection_id]
+        if connection_id in connections:
+            del connections[connection_id]
             logger.info(f"[ ws 会话管理 ] 连接 {connection_id} 已被移除")
         else:
             logger.warning(f"[ ws 会话管理 ] 尝试移除一个不存在的连接: {connection_id}")
