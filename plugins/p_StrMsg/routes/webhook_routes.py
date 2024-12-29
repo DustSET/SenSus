@@ -28,6 +28,8 @@ def iconUrlMatch(appname):
         return "http://klk.aethereiva.cn/image/app/Fluent/bili.png"
     elif (appname == "电子邮件" or appname == "Gmail"):
         return "http://klk.aethereiva.cn/image/app/Fluent/email.png"
+    elif (appname == "homeassistant"):
+        return "http://api.mcylyr.cn:408/static/icons/favicon.ico"
     else:
         return "http://klk.aethereiva.cn/image/app/Fluent/Fluent.png"
 
