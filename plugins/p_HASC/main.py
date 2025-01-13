@@ -107,7 +107,7 @@ class HASCPlugin(Plugin):
         self.states = {}
 
         # 初始化一些设备相关数据
-        self.person = None
+        self.person = "暂未获取到 HA 用户名"
         self.friendly_name = None
         self.entity_id = None
         self.device_type = None
